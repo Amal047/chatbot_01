@@ -1,46 +1,51 @@
-# vectorstore.py
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 
-# Load embedding model once
+# -----------------------------
+# Embedding Model & FAISS Setup
+# -----------------------------
 model = SentenceTransformer('all-MiniLM-L6-v2')
-dimension = 384  # model output dimension
+dimension = 384  # embedding size for this model
 
-# Initialize FAISS index and storage
+# FAISS index and storage
 index = faiss.IndexFlatL2(dimension)
-stored_chunks = []
+stored_chunks = []  # list of dicts: {"text": str, "embedding": np.array}
 
-def add_to_index(chunks):
+
+# -----------------------------
+# Add chunks to index
+# -----------------------------
+def add_to_index(chunks: list[dict]):
     """
-    chunks: list of dicts, each dict = {"text": ..., "embedding": ...}
+    Add chunks of text + embeddings to FAISS index.
+    Each chunk must have 'text' and 'embedding'.
     """
     global index, stored_chunks
     if not chunks:
         return
 
-    embeddings = np.array([chunk["embedding"] for chunk in chunks]).astype("float32")
+    embeddings = np.array([chunk["embedding"] for chunk in chunks], dtype="float32")
+    if embeddings.ndim == 1:
+        embeddings = np.expand_dims(embeddings, axis=0)
+
     stored_chunks.extend(chunks)
-
-    dim = embeddings.shape[1]
-    if index is None:
-        index = faiss.IndexFlatL2(dim)
-
     index.add(embeddings)
-    print(f"Added {len(chunks)} chunks to FAISS index")
+    print(f"✅ Added {len(chunks)} chunks to FAISS index. Total stored: {len(stored_chunks)}")
 
 
-def search_index(query_text, top_k=5):
+# -----------------------------
+# Search index
+# -----------------------------
+def search_index(query_text: str, top_k=5) -> list[dict]:
     """
-    query_text: string
-    returns: list of top_k most similar chunks
+    Search FAISS index for most similar chunks to query.
+    Returns top_k chunks (dicts with 'text' and 'embedding').
     """
     if len(stored_chunks) == 0:
         return []
 
-    query_embedding = model.encode(query_text)
-    query_vec = np.array([query_embedding]).astype("float32")
+    query_vec = model.encode([query_text]).astype("float32")  # shape: (1, dim)
     D, I = index.search(query_vec, top_k)
-
     results = [stored_chunks[i] for i in I[0] if i < len(stored_chunks)]
     return results
