@@ -1,14 +1,23 @@
+# db.py
+import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-DATABASE_URL = "postgresql://postgres:1234@localhost:5432/chatbot_db"
-
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(bind=engine)
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:1234@localhost:5432/chatbot_db")
+# create engine with sensible defaults; allow pool sizing from env
+engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 
-# Import models here so metadata knows about them
-from app import models  
-
-# Create all tables
-Base.metadata.create_all(bind=engine)
+def init_db(create_all_if_missing: bool = False):
+    """
+    Import models and optionally create tables. For production, use Alembic migrations.
+    """
+    # import models to register metadata
+    # delayed import to avoid circular imports
+    try:
+        from app import models  # noqa: F401
+    except Exception:
+        pass
+    if create_all_if_missing or os.getenv("AUTO_CREATE_TABLES", "false").lower() in ("1", "true", "yes"):
+        Base.metadata.create_all(bind=engine)
