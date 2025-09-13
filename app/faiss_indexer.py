@@ -1,4 +1,4 @@
-# vectorstore.py
+# faiss_indexer.py
 import os
 import faiss
 import pickle
@@ -15,21 +15,23 @@ EMBED_DIM = embed_text("test").shape[0]  # infer dimension at runtime
 INDEX_PATH = os.path.join(INDEX_DIR, "index.faiss")
 METADATA_PATH = os.path.join(INDEX_DIR, "metadata.pkl")
 
-# we'll use an IVFFlat/HNSW style index for scalability — for simplicity use HNSW
+
+# --- Helper: Create FAISS index ---
 def _create_index(dim: int):
-    # Use inner product if vectors are normalized (we will normalize to do cosine search)
+    # Using cosine similarity (via normalized inner product)
     index = faiss.IndexHNSWFlat(dim, 32)  # 32 neighbors
     index.hnsw.efSearch = 64
     index.hnsw.efConstruction = 200
     return index
 
-# In-memory structures
+
+# --- Load existing index or initialize ---
 if os.path.exists(INDEX_PATH) and os.path.exists(METADATA_PATH):
     try:
         index = faiss.read_index(INDEX_PATH)
         with open(METADATA_PATH, "rb") as f:
             metadata_store = pickle.load(f)
-        print("Loaded FAISS index and metadata from disk.")
+        print("✅ Loaded FAISS index and metadata from disk.")
     except Exception:
         index = _create_index(EMBED_DIM)
         metadata_store = []  # list of dicts
@@ -38,6 +40,7 @@ else:
     metadata_store = []
 
 
+# --- Vector utilities ---
 def _normalize_vectors(vectors: np.ndarray) -> np.ndarray:
     norms = np.linalg.norm(vectors, axis=1, keepdims=True)
     norms[norms == 0] = 1.0
@@ -50,24 +53,27 @@ def save_index():
         pickle.dump(metadata_store, f)
 
 
+# --- Core API ---
 def add_to_index(chunks: List[Dict[str, Any]], namespace: Optional[str] = None) -> int:
     """
     chunks: list of {"text": str, "metadata": dict}
-    namespace: optional grouping key; we store namespace inside metadata
+    namespace: user/session identifier (required for isolation!)
     Returns number of added chunks.
     """
     if not chunks:
         return 0
+    if not namespace:
+        raise ValueError("❌ Namespace (e.g. entered_by/user_id) is required when adding to index.")
+
     vecs = []
     for c in chunks:
         txt = c.get("text") or ""
         meta = dict(c.get("metadata") or {})
-        if namespace:
-            meta["namespace"] = namespace
-        # create embedding (utils.embed_text caches)
+        meta["namespace"] = namespace  # enforce namespace always
         emb = embed_text(txt)
         vecs.append(emb)
         metadata_store.append({"text": txt, "metadata": meta})
+
     arr = np.array(vecs, dtype="float32")
     arr = _normalize_vectors(arr)
     index.add(arr)
@@ -78,22 +84,25 @@ def add_to_index(chunks: List[Dict[str, Any]], namespace: Optional[str] = None) 
 def search_index(query_text: str, top_k: int = 5, namespace: Optional[str] = None) -> List[Dict[str, Any]]:
     """
     Search index, return list of dicts {"text":..., "metadata": {...}}.
-    If namespace is provided, filter metadata results to that namespace (post-filtering).
+    Namespace is REQUIRED for user-specific isolation.
     """
     if index.ntotal == 0:
         return []
-    q_vec = embed_text(query_text).astype("float32")
-    q_vec = q_vec.reshape(1, -1)
+    if not namespace:
+        raise ValueError("❌ Namespace (e.g. entered_by/user_id) is required when searching the index.")
+
+    q_vec = embed_text(query_text).astype("float32").reshape(1, -1)
     q_vec = _normalize_vectors(q_vec)
-    distances, indices = index.search(q_vec, top_k * 3)  # overfetch to allow namespace filtering
-    results = []
-    seen = set()
+
+    distances, indices = index.search(q_vec, top_k * 3)  # overfetch to allow filtering
+    results, seen = [], set()
+
     for idx in indices[0]:
         if idx < 0 or idx >= len(metadata_store):
             continue
         entry = metadata_store[idx]
-        if namespace and entry["metadata"].get("namespace") != namespace:
-            continue
+        if entry["metadata"].get("namespace") != namespace:
+            continue  # only allow same user’s data
         txt = entry["text"]
         if txt in seen:
             continue
@@ -106,8 +115,8 @@ def search_index(query_text: str, top_k: int = 5, namespace: Optional[str] = Non
 
 def clear_index(namespace: Optional[str] = None):
     """
-    Remove embeddings and metadata optionally filtered by namespace.
-    This is implemented as rebuilding index when deletions are needed (simple and safe).
+    Remove embeddings/metadata by namespace.
+    If namespace=None → reset everything.
     """
     global index, metadata_store
     if namespace is None:
@@ -115,9 +124,11 @@ def clear_index(namespace: Optional[str] = None):
         metadata_store = []
         save_index()
         return True
-    # rebuild without the namespace entries
+
+    # rebuild without that namespace
     new_meta = [m for m in metadata_store if m["metadata"].get("namespace") != namespace]
     vecs = [embed_text(m["text"]).astype("float32") for m in new_meta]
+
     index = _create_index(EMBED_DIM)
     if vecs:
         arr = np.array(vecs, dtype="float32")
@@ -127,11 +138,11 @@ def clear_index(namespace: Optional[str] = None):
     save_index()
     return True
 
+
 def reset_index():
-    """
-    Clear FAISS index and stored chunks (for fresh start).
-    """
-    global index, stored_chunks
-    index.reset()  # clear FAISS index
-    stored_chunks = []
-    print("✅ FAISS index and stored chunks cleared.")
+    """Clear everything (all users)."""
+    global index, metadata_store
+    index = _create_index(EMBED_DIM)
+    metadata_store = []
+    save_index()
+    print("✅ FAISS index and metadata fully reset.")
