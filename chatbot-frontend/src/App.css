@@ -1,0 +1,130 @@
+html, body, #root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* full viewport height */
+  width: 100%;
+  background-color: #1e1e1e;
+  color: white;
+}
+
+.app-header, .app-footer {
+  padding: 1rem;
+  background-color: #2b2b2b;
+  text-align: center;
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: 1.8rem;
+}
+
+.app-main {
+  flex: 1; /* fills the remaining space */
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+
+/* Full-screen app */
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #1e1e1e;
+  color: white;
+  font-family: Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* Header */
+.header {
+  padding: 1rem;
+  text-align: center;
+  font-size: 1.5rem;
+  font-weight: bold;
+  background-color: #2a2a2a;
+  border-bottom: 1px solid #444;
+  flex-shrink: 0;
+}
+
+/* Chat area fills remaining space */
+.chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  overflow-y: auto;
+  gap: 0.5rem;
+}
+
+/* Message bubbles */
+.message {
+  max-width: 70%;
+  padding: 0.6rem 1rem;
+  border-radius: 12px;
+  word-break: break-word;
+}
+
+.message.user {
+  background-color: #0b93f6;
+  align-self: flex-end;
+}
+
+.message.bot {
+  background-color: #333;
+  align-self: flex-start;
+}
+
+/* Input + File uploader at bottom */
+.input-footer {
+  flex-shrink: 0;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  background-color: #2a2a2a;
+  border-top: 1px solid #444;
+}
+
+.input-footer input[type="text"] {
+  flex: 1;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: none;
+  outline: none;
+  font-size: 1rem;
+  color: white;
+  background-color: #3a3a3a;
+}
+
+.input-footer button {
+  padding: 0 1rem;
+  border: none;
+  background-color: #0b93f6;
+  color: white;
+  cursor: pointer;
+  border-radius: 8px;
+  font-weight: bold;
+}
+
+/* File input button */
+.input-footer input[type="file"] {
+  color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .header {
+    font-size: 1.2rem;
+  }
+  .message {
+    max-width: 85%;
+  }
+}

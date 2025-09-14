@@ -1,10 +1,9 @@
 # main.py
 import os
 import uuid
+import hashlib
 from datetime import datetime
 from typing import Optional
-from functools import lru_cache
-import hashlib
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
 from fastapi.responses import JSONResponse
@@ -21,16 +20,21 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # --- Limits & allowed ---
 MAX_FILE_SIZE_BYTES = int(os.getenv("MAX_FILE_SIZE_BYTES", 50 * 1024 * 1024))  # 50MB default
-ALLOWED_EXTENSIONS = {ext.strip().lower() for ext in os.getenv("ALLOWED_EXTENSIONS", "csv,pptx,pdf,xlsx,docx,txt").split(",")}
+ALLOWED_EXTENSIONS = {
+    ext.strip().lower()
+    for ext in os.getenv("ALLOWED_EXTENSIONS", "csv,pptx,pdf,xlsx,docx,txt").split(",")
+}
 
 # --- Simple in-memory cache ---
-# Key: hash(entered_by + query), Value: answer dict
+# Key: hash(entered_by + query), Value: dict(answer, entered_by, namespace)
 query_cache = {}
 
-def _cache_key(entered_by: str, query: str):
+
+def _cache_key(entered_by: str, query: str) -> str:
     """Generate a unique key for caching based on user and query."""
     raw = f"{entered_by}:{query}".encode("utf-8")
     return hashlib.md5(raw).hexdigest()
+
 
 # --- DB dependency ---
 def get_db():
@@ -86,7 +90,9 @@ async def upload_file(
         raise HTTPException(status_code=400, detail="No readable text in uploaded file")
 
     # --- Smart chunking & metadata ---
-    chunks = utils.smart_split_text(raw_text, max_chars=int(os.getenv("CHUNK_MAX_CHARS", 800)))
+    chunks = utils.smart_split_text(
+        raw_text, max_chars=int(os.getenv("CHUNK_MAX_CHARS", 800))
+    )
     chunk_dicts = []
     for i, chunk in enumerate(chunks):
         meta = {
@@ -111,12 +117,18 @@ async def upload_file(
     if os.getenv("CLEAR_HISTORY_ON_UPLOAD", "false").lower() in ("1", "true", "yes"):
         utils.clear_chat_history(user=entered_by, db_session=db_session)
 
-    # --- Optional: invalidate cache for this user ---
-    keys_to_remove = [k for k in query_cache.keys() if k.startswith(hashlib.md5(f"{entered_by}:".encode()).hexdigest()[:8])]
+    # --- Invalidate cache for this user/namespace ---
+    keys_to_remove = [
+        k
+        for k, v in query_cache.items()
+        if v.get("entered_by") == entered_by or v.get("namespace") == ns
+    ]
     for k in keys_to_remove:
         query_cache.pop(k, None)
 
-    return JSONResponse({"message": f"{filename} uploaded and indexed", "added_chunks": added})
+    return JSONResponse(
+        {"message": f"{filename} uploaded and indexed", "added_chunks": added}
+    )
 
 
 # --- Chat endpoint with caching ---
@@ -170,7 +182,9 @@ async def chat(
 
     # --- Fallback to Groq ---
     if not response_text:
-        response_text = utils.ask_groq(query, context=list({d["text"] for d in doc_context} | set(chat_context)))
+        response_text = utils.ask_groq(
+            query, context=list({d["text"] for d in doc_context} | set(chat_context))
+        )
         used_source = "groq" if response_text else "none"
 
     # --- Save history ---
@@ -186,7 +200,11 @@ async def chat(
     db_session.commit()
 
     # --- Store in cache ---
-    result = {"answer": response_text or "Sorry — I couldn't find an answer."}
+    result = {
+        "answer": response_text or "Sorry — I couldn't find an answer.",
+        "entered_by": entered_by,
+        "namespace": ns,
+    }
     query_cache[cache_id] = result
 
     return result
@@ -194,7 +212,9 @@ async def chat(
 
 # --- Clear FAISS index ---
 @app.post("/clear-index/")
-async def clear_index(user: Optional[str] = Form(None), db_session: Session = Depends(get_db)):
+async def clear_index(
+    user: Optional[str] = Form(None), db_session: Session = Depends(get_db)
+):
     try:
         if user:
             faiss_indexer.clear_index(namespace=user)
@@ -210,7 +230,9 @@ async def clear_index(user: Optional[str] = Form(None), db_session: Session = De
 
 # --- Clear chat history ---
 @app.post("/clear-history/")
-async def clear_history(user: Optional[str] = Form(None), db_session: Session = Depends(get_db)):
+async def clear_history(
+    user: Optional[str] = Form(None), db_session: Session = Depends(get_db)
+):
     try:
         utils.clear_chat_history(user=user, db_session=db_session)
         return {"message": f"Cleared chat history for {'all users' if not user else user}"}
