@@ -1,28 +1,53 @@
 .file-uploader {
+  position: relative;
   display: flex;
-  gap: 0.5rem;
   align-items: center;
-  justify-content: center;
 }
 
-.file-uploader input[type="file"] {
-  padding: 0.5rem;
-  border-radius: 8px;
-  border: 1px solid #555;
-  background-color: #2b2b2b;
-  color: white;
-}
-
-.file-uploader button {
-  padding: 0.5rem 1rem;
+/* + button styled like ChatGPT */
+.plus-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   border: none;
-  border-radius: 8px;
-  background-color: #007bff;
+  background-color: #3a3a3a;
   color: white;
+  font-size: 20px;
+  font-weight: bold;
   cursor: pointer;
 }
 
-.file-uploader button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.plus-btn:hover {
+  background-color: #555;
+}
+
+/* popup box */
+.upload-popup {
+  position: absolute;
+  bottom: 40px; /* floats above the + button */
+  left: 0;
+  background: #2b2b2b;
+  padding: 0.5rem;
+  border-radius: 8px;
+  border: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+/* file input inside popup */
+.upload-popup input[type="file"] {
+  padding: 0.3rem;
+  border-radius: 6px;
+  border: 1px solid #555;
+  background-color: #1e1e1e;
+  color: white;
+  font-size: 0.9rem;
+}
+
+/* file name preview */
+.file-name {
+  color: #ccc;
+  font-size: 0.85rem;
+  margin-top: 4px;
 }

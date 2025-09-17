@@ -1,70 +1,125 @@
-.chatbox-container {
+/* Full screen container */
+.chat-container {
   display: flex;
   flex-direction: column;
   height: 100vh; /* full viewport height */
-  max-width: 600px;
-  margin: 0 auto;
-  background-color: #1e1e1e;
-  color: white;
-  border-radius: 10px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  width: 100vw;
+  background: #242424;
+  overflow: hidden; /* prevents extra scrollbars */
+  margin: 0;
+  padding: 0;
 }
 
-.messages {
+/* Scrollable messages area */
+.chat-messages {
   flex: 1;
+  overflow-y: auto; /* scrolls internally */
   padding: 1rem;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
+/* Input bar that sticks to bottom */
+.chat-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  background: #1e1e1e;
+  border-top: 1px solid #444;
+  flex-shrink: 0; /* prevents shrinking */
+  z-index: 100;
+}
+
+/* Upload (+) button */
+.upload-toggle {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: #2c2c2c;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+/* Input box */
+.message-box {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: #2c2c2c;
+  color: white;
+}
+
+/* Send button */
+.send-btn {
+  background: #007bff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+}
+
+/* Upload panel (hidden by default) */
+.upload-panel {
+  position: absolute;
+  bottom: 60px; /* sits above input bar */
+  left: 10px;
+  background: #2c2c2c;
+  padding: 10px;
+  border-radius: 8px;
+  display: flex;
+  gap: 10px;
+}
+
+.upload-panel.hidden {
+  display: none;
+}
+
+/* Messages */
 .message {
-  max-width: 70%;
+  margin: 0.5rem 0;
   padding: 0.6rem 1rem;
   border-radius: 12px;
+  max-width: 70%;
   word-wrap: break-word;
+  animation: fadeInUp 0.25s ease;
 }
 
 .message.user {
-  background-color: #0b93f6;
   align-self: flex-end;
+  background: #0b93f6;
   color: white;
 }
 
 .message.bot {
-  background-color: #333;
   align-self: flex-start;
+  background: #3a3a3a;
   color: white;
 }
 
-.input-footer {
-  display: flex;
-  gap: 0.5rem;
-  padding: 0.5rem;
-  border-top: 1px solid #444;
-  background-color: #2b2b2b;
+.file-message {
+  display: inline-block;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  background: #2a2a2a;
+  color: #ddd;
+  font-size: 0.9rem;
+  margin-top: 0.3rem;
 }
 
-.input-footer input[type="text"] {
-  flex: 1;
-  padding: 0.6rem;
-  border-radius: 8px;
-  border: none;
-  outline: none;
-  font-size: 1rem;
-  background-color: #3a3a3a;
-  color: white;
-}
-
-.input-footer button {
-  padding: 0 1rem;
-  border-radius: 8px;
-  border: none;
-  cursor: pointer;
-  background-color: #0b93f6;
-  color: white;
-  font-weight: bold;
+/* Animation for new messages */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }

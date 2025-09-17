@@ -1,25 +1,17 @@
 import React from "react";
 import ChatBox from "./ChatBox";
-import FileUploader from "./FileUploader";
-import "./App.css"; // We'll put full screen styles here
+import "./App.css";
 
 const App: React.FC = () => {
   return (
-    <div className="app-container">
+    <div className="app">
       {/* Header */}
-      <header className="app-header">
-        <h1>AI Chatbot</h1>
-      </header>
+      <header className="header">AI Chatbot</header>
 
       {/* Chat area */}
-      <main className="app-main">
+      <main className="chat-area">
         <ChatBox />
       </main>
-
-      {/* Footer */}
-      <footer className="app-footer">
-        <FileUploader />
-      </footer>
     </div>
   );
 };
